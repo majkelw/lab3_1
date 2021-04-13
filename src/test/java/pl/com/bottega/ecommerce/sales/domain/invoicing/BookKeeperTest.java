@@ -36,6 +36,7 @@ class BookKeeperTest {
         requestItemBuilder = new RequestItemBuilder();
     }
 
+    //condition tests
     @Test
     void requestInvoiceWithOneItemShouldReturnInvoiceWithOneItem() {
         InvoiceRequest request = new InvoiceRequest(dummy);
@@ -49,7 +50,7 @@ class BookKeeperTest {
 
         request.add(requestItem);
         when(factory.create(dummy)).thenReturn(invoice);
-        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(300), "bookTax"));
+        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(300), "tax"));
         bookKeeper.issuance(request, taxPolicy);
         assertEquals(1, invoice.getItems().size());
     }
@@ -77,16 +78,17 @@ class BookKeeperTest {
             request.add(requestItem);
         }
         when(factory.create(dummy)).thenReturn(invoice);
-        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(30), "bookTax"));
+        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(30), "tax"));
         bookKeeper.issuance(request, taxPolicy);
         assertEquals(100, invoice.getItems().size());
     }
 
+    //behavior tests
     @Test
     void requestInvoiceWithTwoItemsShouldCallCalculateTaxTwice() {
         Invoice invoice = new Invoice(Id.generate(), dummy);
         when(factory.create(dummy)).thenReturn(invoice);
-        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(300), "bookTax"));
+        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(300), "tax"));
         InvoiceRequest request = new InvoiceRequest(dummy);
         ProductBuilder productBuilder = new ProductBuilder();
 
@@ -107,6 +109,43 @@ class BookKeeperTest {
         request.add(requestItem2);
         bookKeeper.issuance(request, taxPolicy);
         verify(taxPolicy, times(2)).calculateTax(any(ProductType.class), any(Money.class));
+    }
+
+    @Test
+    void requestInvoiceWithZeroItemsShouldNotCallCalculateTax() {
+        Invoice invoice = new Invoice(Id.generate(), dummy);
+        when(factory.create(dummy)).thenReturn(invoice);
+        InvoiceRequest request = new InvoiceRequest(dummy);
+        bookKeeper.issuance(request, taxPolicy);
+        verify(taxPolicy, times(0)).calculateTax(any(ProductType.class), any(Money.class));
+    }
+
+    @Test
+    void requestInvoiceWithHundredItemsShouldCallCalculateTaxHundredTimes() {
+        Invoice invoice = new Invoice(Id.generate(), dummy);
+        when(factory.create(dummy)).thenReturn(invoice);
+        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(300), "tax"));
+        InvoiceRequest request = new InvoiceRequest(dummy);
+        ProductBuilder productBuilder = new ProductBuilder();
+        Product product = productBuilder.withPrice(new Money(30)).withName("book").build();
+        Product product2 = productBuilder.withPrice(new Money(10)).withName("cake").withProductType(ProductType.FOOD).build();
+        RequestItem requestItem = requestItemBuilder
+                .withProductData(product.generateSnapshot())
+                .withTotalCost(new Money(30))
+                .build();
+        RequestItem requestItem2 = requestItemBuilder
+                .withProductData(product2.generateSnapshot())
+                .withQuantity(10)
+                .withTotalCost(new Money(100))
+                .build();
+        for (int i = 0; i < 100; i++) {
+            if (i % 2 == 0)
+                request.add(requestItem);
+            else
+                request.add(requestItem2);
+        }
+        bookKeeper.issuance(request, taxPolicy);
+        verify(taxPolicy, times(100)).calculateTax(any(ProductType.class), any(Money.class));
     }
 
 }
