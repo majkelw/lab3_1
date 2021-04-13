@@ -20,4 +20,7 @@ public class RequestItemBuilder {
         this.totalCost = totalCost;
         return this;
     }
+    public RequestItem build(){
+        return new RequestItem(productData, quantity, totalCost);
+    }
 }
