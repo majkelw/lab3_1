@@ -52,7 +52,7 @@ class BookKeeperTest {
         request.add(requestItem);
         when(factory.create(dummy)).thenReturn(invoice);
         when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(300), "bookTax"));
-        Invoice issuance = bookKeeper.issuance(request, taxPolicy);
+        bookKeeper.issuance(request, taxPolicy);
         assertEquals(1,invoice.getItems().size());
     }
 
@@ -63,6 +63,25 @@ class BookKeeperTest {
         when(factory.create(dummy)).thenReturn(invoice);
         bookKeeper.issuance(request, taxPolicy);
         assertEquals(0, invoice.getItems().size());
+    }
+
+    @Test
+    void requestInvoiceWithHundredItemsShouldReturnInvoiceWithHundredItems(){
+        InvoiceRequest request = new InvoiceRequest(dummy);
+        Invoice invoice = new Invoice(Id.generate(), dummy);
+        for(int i = 0; i<100; i++) {
+            Product product = productBuilder.withPrice(new Money(i)).withName("chicken").withProductType(ProductType.FOOD).build();
+            RequestItem requestItem = requestItemBuilder
+                    .withProductData(product.generateSnapshot())
+                    .withQuantity(i)
+                    .withTotalCost(new Money(i, Money.DEFAULT_CURRENCY))
+                    .build();
+            request.add(requestItem);
+        }
+        when(factory.create(dummy)).thenReturn(invoice);
+        when(taxPolicy.calculateTax(any(ProductType.class), any(Money.class))).thenReturn(new Tax(new Money(30), "bookTax"));
+        bookKeeper.issuance(request, taxPolicy);
+        assertEquals(100, invoice.getItems().size());
     }
 
 }
